@@ -1,7 +1,10 @@
 [package]
 name = "func"
 version = "0.1.0-dev"
+authors = ["Áron Derényi"]
 edition = "2021"
+description = "A crate that helps creating colsures from function pointers"
+repository = "https://github.com/AronDerenyi/Func"
 
 [dependencies]
 

@@ -1,59 +1,35 @@
-macro_rules! decl_func {
-    ($func_name:ident $(,$param_name:ident: $param_type:ident)*) => {
-        #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-        pub struct $func_name<C $(,$param_type)*, R> {
-            pub function: fn(&C $(,$param_type)*) -> R,
-            pub captured: C,
-        }
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub struct Func<C, P, R> {
+    pub captured: C,
+    pub function: fn(&C, P) -> R,
+}
 
-        impl<C $(,$param_type)*, R> $func_name<C $(,$param_type)*, R> {
+macro_rules! impl_func_call {
+    ($($param_name:ident: $param_type:ident),*) => {
+        impl<C $(,$param_type)*, R> Func<C, ($($param_type,)*), R> {
             pub fn call(&self $(,$param_name: $param_type)*) -> R {
-                (self.function)(&self.captured $(,$param_name)*)
+                (self.function)(&self.captured, ($($param_name,)*))
+            }
+
+            pub fn to_fn(self) -> impl Fn($($param_type),*) -> R {
+                let Self{captured, function} = self;
+                move |$($param_name: $param_type),*| {
+                    function(&captured, ($($param_name,)*))
+                }
             }
         }
     };
 }
 
-decl_func!(Func0);
-decl_func!(Func1, p1: P1);
-decl_func!(Func2, p1: P1, p2: P2);
-decl_func!(Func3, p1: P1, p2: P2, p3: P3);
-decl_func!(Func4, p1: P1, p2: P2, p3: P3, p4: P4);
-decl_func!(Func5, p1: P1, p2: P2, p3: P3, p4: P4, p5: P5);
-
-#[macro_export]
-macro_rules! func_internal {
-    (@internal $(())?, $($tail:tt)*) => {
-        $crate::Func0 {
-            $($tail)*
-        }
-    };
-    (@internal ($p1i:ident $(:$p1t:ty)?), $($tail:tt)*) => {
-        $crate::Func1 {
-            $($tail)*
-        }
-    };
-    (@internal ($p1i:ident $(:$p1t:ty)?, $p2i:ident $(:$p2t:ty)?), $($tail:tt)*) => {
-        $crate::Func2 {
-            $($tail)*
-        }
-    };
-    (@internal ($p1i:ident $(:$p1t:ty)?, $p2i:ident $(:$p2t:ty)?, $p3i:ident $(:$p3t:ty)?), $($tail:tt)*) => {
-        $crate::Func3 {
-            $($tail)*
-        }
-    };
-    (@internal ($p1i:ident $(:$p1t:ty)?, $p2i:ident $(:$p2t:ty)?, $p3i:ident $(:$p3t:ty)?, $p4i:ident $(:$p4t:ty)?), $($tail:tt)*) => {
-        $crate::Func4 {
-            $($tail)*
-        }
-    };
-    (@internal ($p1i:ident $(:$p1t:ty)?, $p2i:ident $(:$p2t:ty)?, $p3i:ident $(:$p3t:ty)?, $p4i:ident $(:$p4t:ty)?, $p5i:ident $(:$p5t:ty)?), $($tail:tt)*) => {
-        $crate::Func5 {
-            $($tail)*
-        }
-    };
-}
+impl_func_call!();
+impl_func_call!(p1: P1);
+impl_func_call!(p1: P1, p2: P2);
+impl_func_call!(p1: P1, p2: P2, p3: P3);
+impl_func_call!(p1: P1, p2: P2, p3: P3, p4: P4);
+impl_func_call!(p1: P1, p2: P2, p3: P3, p4: P4, p5: P5);
+impl_func_call!(p1: P1, p2: P2, p3: P3, p4: P4, p5: P5, p6: P6);
+impl_func_call!(p1: P1, p2: P2, p3: P3, p4: P4, p5: P5, p6: P6, p7: P7);
+impl_func_call!(p1: P1, p2: P2, p3: P3, p4: P4, p5: P5, p6: P6, p7: P7, p8: P8);
 
 #[macro_export]
 macro_rules! cap_internal {
@@ -66,19 +42,33 @@ macro_rules! cap_internal {
 }
 
 #[macro_export]
+macro_rules! param_internal {
+    (@internal) => {
+        _
+    };
+    (@internal $param_ty:ty) => {
+        $param_ty
+    };
+}
+
+#[macro_export]
 macro_rules! func {
     (
         $([$($cap_ident:ident $(: $cap_expr:expr)?),*])?
-        $(|$($param_ident:ident $(: $param_ty:ty)?),*|)?
+        $(|$(mut)? $($param_ident:ident $(: $param_ty:ty)?),*|)?
         $(-> $r_type:ty)?
         $body:block
     ) => {
-        $crate::func_internal! {
-            @internal
-            $(($($param_ident $(: $param_ty)?),*))?,
-            #[allow(unused_parens)]
-            function: |($($($cap_ident),*)?) $($(,$param_ident $(: $param_ty)?)*)?| $(-> $r_type)? { $body },
-            captured: ($($($crate::cap_internal!(@internal $cap_ident $(, $cap_expr)?)),*)?),
+        $crate::Func {
+            captured: (
+                $($($crate::cap_internal!(@internal $cap_ident $(, $cap_expr)?)),*)?
+            ),
+            function: |
+                ($($($cap_ident),*)?),
+                ($($($param_ident,)*)?): (
+                    $($($crate::param_internal!($(@internal $param_ty)?),)*)?
+                )
+            | $(-> $r_type)? { $body },
         }
     };
 }

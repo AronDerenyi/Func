@@ -1,0 +1,10 @@
+[package]
+name = "func"
+version = "0.1.0-dev"
+edition = "2021"
+
+[dependencies]
+
+[[example]]
+name = "example"
+path = "examples/example.rs"

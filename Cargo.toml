@@ -5,6 +5,7 @@ authors = ["Áron Derényi"]
 edition = "2021"
 description = "A crate that helps creating colsures from function pointers"
 repository = "https://github.com/AronDerenyi/Func"
+license = "MIT"
 
 [dependencies]
 

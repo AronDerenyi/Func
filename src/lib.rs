@@ -4,7 +4,19 @@ pub struct Func<C, P, R> {
     pub function: fn(&C, P) -> R,
 }
 
-macro_rules! impl_func_call {
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub struct FuncMut<C, P, R> {
+    pub captured: C,
+    pub function: fn(&mut C, P) -> R,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub struct FuncOnce<C, P, R> {
+    pub captured: C,
+    pub function: fn(C, P) -> R,
+}
+
+macro_rules! impl_func {
     ($($param_name:ident: $param_type:ident),*) => {
         impl<C $(,$param_type)*, R> Func<C, ($($param_type,)*), R> {
             pub fn call(&self $(,$param_name: $param_type)*) -> R {
@@ -18,18 +30,45 @@ macro_rules! impl_func_call {
                 }
             }
         }
+
+        impl<C $(,$param_type)*, R> FuncMut<C, ($($param_type,)*), R> {
+            pub fn call(&mut self $(,$param_name: $param_type)*) -> R {
+                (self.function)(&mut self.captured, ($($param_name,)*))
+            }
+
+            pub fn to_fn_mut(self) -> impl FnMut($($param_type),*) -> R {
+                let Self{mut captured, function} = self;
+                move |$($param_name: $param_type),*| {
+                    function(&mut captured, ($($param_name,)*))
+                }
+            }
+        }
+
+        impl<C $(,$param_type)*, R> FuncOnce<C, ($($param_type,)*), R> {
+            pub fn call(self $(,$param_name: $param_type)*) -> R {
+                let Self{captured, function} = self;
+                function(captured, ($($param_name,)*))
+            }
+
+            pub fn to_fn_once(self) -> impl FnOnce($($param_type),*) -> R {
+                let Self{captured, function} = self;
+                move |$($param_name: $param_type),*| {
+                    function(captured, ($($param_name,)*))
+                }
+            }
+        }
     };
 }
 
-impl_func_call!();
-impl_func_call!(p1: P1);
-impl_func_call!(p1: P1, p2: P2);
-impl_func_call!(p1: P1, p2: P2, p3: P3);
-impl_func_call!(p1: P1, p2: P2, p3: P3, p4: P4);
-impl_func_call!(p1: P1, p2: P2, p3: P3, p4: P4, p5: P5);
-impl_func_call!(p1: P1, p2: P2, p3: P3, p4: P4, p5: P5, p6: P6);
-impl_func_call!(p1: P1, p2: P2, p3: P3, p4: P4, p5: P5, p6: P6, p7: P7);
-impl_func_call!(p1: P1, p2: P2, p3: P3, p4: P4, p5: P5, p6: P6, p7: P7, p8: P8);
+impl_func!();
+impl_func!(p1: P1);
+impl_func!(p1: P1, p2: P2);
+impl_func!(p1: P1, p2: P2, p3: P3);
+impl_func!(p1: P1, p2: P2, p3: P3, p4: P4);
+impl_func!(p1: P1, p2: P2, p3: P3, p4: P4, p5: P5);
+impl_func!(p1: P1, p2: P2, p3: P3, p4: P4, p5: P5, p6: P6);
+impl_func!(p1: P1, p2: P2, p3: P3, p4: P4, p5: P5, p6: P6, p7: P7);
+impl_func!(p1: P1, p2: P2, p3: P3, p4: P4, p5: P5, p6: P6, p7: P7, p8: P8);
 
 #[macro_export]
 macro_rules! cap_internal {
@@ -52,23 +91,58 @@ macro_rules! param_internal {
 }
 
 #[macro_export]
-macro_rules! func {
+macro_rules! func_internal {
     (
+        @internal
+        $type:ident
         $([$($cap_ident:ident $(: $cap_expr:expr)?),*])?
         $(|$(mut)? $($param_ident:ident $(: $param_ty:ty)?),*|)?
         $(-> $r_type:ty)?
         $body:block
     ) => {
-        $crate::Func {
+        $crate::$type {
             captured: (
                 $($($crate::cap_internal!(@internal $cap_ident $(, $cap_expr)?)),*)?
             ),
             function: |
                 ($($($cap_ident),*)?),
                 ($($($param_ident,)*)?): (
-                    $($($crate::param_internal!($(@internal $param_ty)?),)*)?
+                    $($($crate::param_internal!(@internal $($param_ty)?),)*)?
                 )
             | $(-> $r_type)? { $body },
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! func {
+    ($($body:tt)*) => {
+        $crate::func_internal! {
+            @internal
+            Func
+            $($body)*
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! func_mut {
+    ($($body:tt)*) => {
+        $crate::func_internal! {
+            @internal
+            FuncMut
+            $($body)*
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! func_once {
+    ($($body:tt)*) => {
+        $crate::func_internal! {
+            @internal
+            FuncOnce
+            $($body)*
         }
     };
 }

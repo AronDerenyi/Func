@@ -1,16 +1,16 @@
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Debug)]
 pub struct Func<C, P, R> {
     pub captured: C,
     pub function: fn(&C, P) -> R,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Debug)]
 pub struct FuncMut<C, P, R> {
     pub captured: C,
     pub function: fn(&mut C, P) -> R,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Debug)]
 pub struct FuncOnce<C, P, R> {
     pub captured: C,
     pub function: fn(C, P) -> R,
@@ -60,59 +60,58 @@ macro_rules! impl_func {
     };
 }
 
-impl_func!();
-impl_func!(p1: P1);
-impl_func!(p1: P1, p2: P2);
-impl_func!(p1: P1, p2: P2, p3: P3);
-impl_func!(p1: P1, p2: P2, p3: P3, p4: P4);
-impl_func!(p1: P1, p2: P2, p3: P3, p4: P4, p5: P5);
-impl_func!(p1: P1, p2: P2, p3: P3, p4: P4, p5: P5, p6: P6);
-impl_func!(p1: P1, p2: P2, p3: P3, p4: P4, p5: P5, p6: P6, p7: P7);
-impl_func!(p1: P1, p2: P2, p3: P3, p4: P4, p5: P5, p6: P6, p7: P7, p8: P8);
-
-#[macro_export]
-macro_rules! cap_internal {
-    (@internal $cap_ident:ident) => {
-        $cap_ident
-    };
-    (@internal $cap_ident:ident, $cap_expr:expr) => {
-        $cap_expr
-    };
-}
-
-#[macro_export]
-macro_rules! param_internal {
-    (@internal) => {
-        _
-    };
-    (@internal $param_ty:ty) => {
-        $param_ty
-    };
-}
-
-#[macro_export]
-macro_rules! func_internal {
-    (
-        @internal
-        $type:ident
-        $([$($cap_ident:ident $(: $cap_expr:expr)?),*])?
-        $(|$(mut)? $($param_ident:ident $(: $param_ty:ty)?),*|)?
-        $(-> $r_type:ty)?
-        $body:block
-    ) => {
-        $crate::$type {
-            captured: (
-                $($($crate::cap_internal!(@internal $cap_ident $(, $cap_expr)?)),*)?
-            ),
-            function: |
-                ($($($cap_ident),*)?),
-                ($($($param_ident,)*)?): (
-                    $($($crate::param_internal!(@internal $($param_ty)?),)*)?
-                )
-            | $(-> $r_type)? { $body },
+impl<C: Clone, P, R> Clone for Func<C, P, R> {
+    fn clone(&self) -> Self {
+        Self {
+            captured: self.captured.clone(),
+            function: self.function.clone(),
         }
-    };
+    }
 }
+
+impl<C: Clone, P, R> Clone for FuncMut<C, P, R> {
+    fn clone(&self) -> Self {
+        Self {
+            captured: self.captured.clone(),
+            function: self.function.clone(),
+        }
+    }
+}
+
+impl<C: Clone, P, R> Clone for FuncOnce<C, P, R> {
+    fn clone(&self) -> Self {
+        Self {
+            captured: self.captured.clone(),
+            function: self.function.clone(),
+        }
+    }
+}
+
+impl<C: Copy, P, R> Copy for Func<C, P, R> {}
+impl<C: Copy, P, R> Copy for FuncMut<C, P, R> {}
+impl<C: Copy, P, R> Copy for FuncOnce<C, P, R> {}
+
+impl<C: PartialEq, P, R> PartialEq for Func<C, P, R> {
+    fn eq(&self, other: &Self) -> bool {
+        self.captured == other.captured && self.function == other.function
+    }
+}
+
+impl<C: PartialEq, P, R> PartialEq for FuncMut<C, P, R> {
+    fn eq(&self, other: &Self) -> bool {
+        self.captured == other.captured && self.function == other.function
+    }
+}
+
+impl<C: PartialEq, P, R> PartialEq for FuncOnce<C, P, R> {
+    fn eq(&self, other: &Self) -> bool {
+        self.captured == other.captured && self.function == other.function
+    }
+}
+
+impl<C: Eq, P, R> Eq for Func<C, P, R> {}
+impl<C: Eq, P, R> Eq for FuncMut<C, P, R> {}
+impl<C: Eq, P, R> Eq for FuncOnce<C, P, R> {}
 
 #[macro_export]
 macro_rules! func {
@@ -146,3 +145,57 @@ macro_rules! func_once {
         }
     };
 }
+
+#[macro_export]
+macro_rules! func_internal {
+    (
+        @internal
+        $type:ident
+        $([$($cap_ident:ident $(: $cap_expr:expr)?),*])?
+        $(|$(mut)? $($param_ident:ident $(: $param_ty:ty)?),*|)?
+        $(-> $r_type:ty)?
+        $body:block
+    ) => {
+        $crate::$type {
+            captured: (
+                $($($crate::cap_internal!(@internal $cap_ident $(, $cap_expr)?)),*)?
+            ),
+            function: |
+                ($($($cap_ident),*)?),
+                ($($($param_ident,)*)?): (
+                    $($($crate::param_internal!(@internal $($param_ty)?),)*)?
+                )
+            | $(-> $r_type)? { $body },
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! cap_internal {
+    (@internal $cap_ident:ident) => {
+        $cap_ident
+    };
+    (@internal $cap_ident:ident, $cap_expr:expr) => {
+        $cap_expr
+    };
+}
+
+#[macro_export]
+macro_rules! param_internal {
+    (@internal) => {
+        _
+    };
+    (@internal $param_ty:ty) => {
+        $param_ty
+    };
+}
+
+impl_func!();
+impl_func!(p1: P1);
+impl_func!(p1: P1, p2: P2);
+impl_func!(p1: P1, p2: P2, p3: P3);
+impl_func!(p1: P1, p2: P2, p3: P3, p4: P4);
+impl_func!(p1: P1, p2: P2, p3: P3, p4: P4, p5: P5);
+impl_func!(p1: P1, p2: P2, p3: P3, p4: P4, p5: P5, p6: P6);
+impl_func!(p1: P1, p2: P2, p3: P3, p4: P4, p5: P5, p6: P6, p7: P7);
+impl_func!(p1: P1, p2: P2, p3: P3, p4: P4, p5: P5, p6: P6, p7: P7, p8: P8);

@@ -46,8 +46,7 @@ macro_rules! impl_func {
 
         impl<C $(,$param_type)*, R> FuncOnce<C, ($($param_type,)*), R> {
             pub fn call(self $(,$param_name: $param_type)*) -> R {
-                let Self{captured, function} = self;
-                function(captured, ($($param_name,)*))
+                (self.function)(self.captured, ($($param_name,)*))
             }
 
             pub fn to_fn_once(self) -> impl FnOnce($($param_type),*) -> R {
@@ -152,7 +151,7 @@ macro_rules! func_internal {
         @internal
         $type:ident
         $([$($cap_ident:ident $(: $cap_expr:expr)?),*])?
-        $(|$(mut)? $($param_ident:ident $(: $param_ty:ty)?),*|)?
+        $(|$($param_ident:ident $(: $param_ty:ty)?),*|)?
         $(-> $r_type:ty)?
         $body:block
     ) => {

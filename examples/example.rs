@@ -1,23 +1,12 @@
-use func::{func, func_once};
-
-struct Test;
+use func::func;
 
 fn main() {
-    let d = 32;
-    let c = func!([d, c: d] |a: f32, b: i32| {
-        println!("test {}", a);
-        println!("test {}", d + c + b);
-        0.0
-    });
+    let coeff = 3; // Captured variable
+    let add_mul = func! { [coeff] | a, b | {
+        let result = (a + b) * coeff;
+        println!("Adding {} to {} and multiplying by {} = {}", a, b, coeff, result);
+        result
+    }};
 
-    let func_once = func_once!([d, _c: Test] |a, b: i32| {
-        println!("test {}", a);
-        println!("test {}", d + b);
-        d
-    });
-
-    func_once.call(10.0, 11);
-    // func_once.call(10.0, 11); // This won't compile
-
-    println!("{}", c.call(10.0, 11));
+    assert_eq!(add_mul.call(1, 2), 9);
 }

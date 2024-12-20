@@ -158,10 +158,10 @@ macro_rules! func_internal {
     ) => {
         $crate::$type {
             captured: (
-                $($($crate::cap_internal!(@internal $cap_ident $(, $cap_expr)?)),*)?
+                $($($crate::cap_internal!(@internal $cap_ident $(, $cap_expr)?),)*)?
             ),
             function: |
-                ($($($cap_ident),*)?),
+                ($($($cap_ident,)*)?),
                 ($($($param_ident,)*)?): (
                     $($($crate::param_internal!(@internal $($param_ty)?),)*)?
                 )
@@ -199,3 +199,38 @@ impl_func!(p1: P1, p2: P2, p3: P3, p4: P4, p5: P5);
 impl_func!(p1: P1, p2: P2, p3: P3, p4: P4, p5: P5, p6: P6);
 impl_func!(p1: P1, p2: P2, p3: P3, p4: P4, p5: P5, p6: P6, p7: P7);
 impl_func!(p1: P1, p2: P2, p3: P3, p4: P4, p5: P5, p6: P6, p7: P7, p8: P8);
+
+mod test {
+
+    #[test]
+    fn addition_func_with_type_annotations() {
+        let add = func!(|a: i32, b: i32| -> i32 { a + b });
+        assert_eq!(add.call(1, 2), 3);
+    }
+
+    #[test]
+    fn addition_func_without_parameter_type_annotations() {
+        let add = func!(|a, b| -> i32 { a + b });
+        assert_eq!(add.call(1, 2), 3);
+    }
+
+    #[test]
+    fn addition_func_without_type_annotations() {
+        let add = func!(|a, b| { a + b });
+        assert_eq!(add.call(1, 2), 3);
+    }
+
+    #[test]
+    fn labeled_capturing_addition_func() {
+        let coeff = 3;
+        let add = func!([c: coeff] |a: i32, b: i32| -> i32 { c * a + c * b });
+        assert_eq!(add.call(1, 2), 9);
+    }
+
+    #[test]
+    fn unlabeled_capturing_addition_func() {
+        let c = 3;
+        let add = func!([c] |a: i32, b: i32| -> i32 { c * a + c * b });
+        assert_eq!(add.call(1, 2), 9);
+    }
+}
